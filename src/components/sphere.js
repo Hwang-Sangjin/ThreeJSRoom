@@ -1,12 +1,11 @@
 import * as THREE from "three";
 
-const Sphere = (scene, object_arr, position) => {
+const Sphere = (scene, position) => {
   const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
   const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
   const sphere = new THREE.Mesh(sphereGeometry, material);
 
-  sphere.position.set(position[0], position[1], position[2]);
-  console.log(sphere);
+  sphere.position.set(...position);
 
   const boxHelper = new THREE.BoxHelper(sphere, 0xffffff);
   boxHelper.visible = false;
@@ -17,7 +16,7 @@ const Sphere = (scene, object_arr, position) => {
 
   scene.add(group);
 
-  object_arr.push(group);
+  return group;
 };
 
 export default Sphere;
