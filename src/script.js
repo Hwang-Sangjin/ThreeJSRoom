@@ -2,6 +2,9 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { TransformControls } from "three/examples/jsm/controls/TransformControls";
 import sphere from "./components/sphere";
+import { acceleratedRaycast, MeshBVH, MeshBVHHelper } from "three-mesh-bvh";
+import Stats from "stats.js";
+import { DRACOLoader, GLTFLoader } from "three/examples/jsm/Addons.js";
 
 let scene, camera, renderer, raycaster, mouse, transformControls;
 let mouseOverObject = null;
@@ -11,6 +14,9 @@ const object_arr = [];
 // Scene setup
 scene = new THREE.Scene();
 scene.background = new THREE.Color(0x202020);
+const stats = new Stats();
+stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+document.body.appendChild(stats.dom);
 
 /**
  * Sizes
@@ -43,10 +49,55 @@ scene.add(ambientLight);
 
 // Raycaster & Mouse Setup
 raycaster = new THREE.Raycaster();
+raycaster.firstHitOnly = true;
 mouse = new THREE.Vector2();
 
 object_arr.push(sphere(scene, [-2, 0, 0]));
 object_arr.push(sphere(scene, [2, 0, 0]));
+
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/"); // or use local path
+
+const loader = new GLTFLoader();
+loader.setDRACOLoader(dracoLoader);
+loader.load(
+  "rabbit.glb", // Must be in the same server path or in `public/` if using a bundler
+  (gltf) => {
+    const model = gltf.scene;
+    model.scale.set(1, 1, 1);
+    model.position.set(0, 0, 3);
+    scene.add(model);
+
+    const mesh = model.children[0];
+    mesh.raycast = acceleratedRaycast;
+    mesh.geometry.boundsTree = new MeshBVH(mesh.geometry);
+
+    // 🔍 Add the BVH visual helper
+    const helper = new MeshBVHHelper(mesh);
+    helper.depth = 2;
+
+    helper.update();
+    helper.visible = true; // set to false if you want to toggle later
+    scene.add(helper);
+  },
+  undefined,
+  (error) => {
+    console.error("An error happened loading the GLB:", error);
+  }
+);
+
+object_arr.forEach((group) => {
+  const mesh = group.children[0];
+  mesh.raycast = acceleratedRaycast;
+  mesh.geometry.boundsTree = new MeshBVH(mesh.geometry);
+
+  // 🔍 Add the BVH visual helper
+  const helper = new MeshBVHHelper(mesh);
+  helper.depth = 2;
+  helper.update();
+  helper.visible = true; // set to false if you want to toggle later
+  scene.add(helper);
+});
 
 transformControls = new TransformControls(camera, renderer.domElement);
 // Prevent OrbitControls while dragging
@@ -54,7 +105,7 @@ transformControls.addEventListener("dragging-changed", (event) => {
   controls.enabled = !event.value;
 });
 
-const snapThreshold = 0.1; // Adjust this as needed
+const snapThreshold = 0.2; // Adjust this as needed
 
 transformControls.addEventListener("change", () => {
   const movingObject = transformControls.object;
@@ -78,7 +129,6 @@ transformControls.addEventListener("change", () => {
     otherBox.getSize(otherSize);
 
     // **Calculate snapping threshold dynamically**
-    const snapThreshold = 0.2;
     const snapThresholdX = (movingSize.x + otherSize.x) / 2;
     const snapThresholdY = (movingSize.y + otherSize.y) / 2;
     const snapThresholdZ = (movingSize.z + otherSize.z) / 2;
@@ -115,11 +165,15 @@ scene.add(gizmo);
 
 // Animation loop
 function animate() {
+  stats.begin();
+
   requestAnimationFrame(animate);
 
   object_arr.forEach((e) => e.children[1].update());
 
   renderer.render(scene, camera);
+
+  stats.end();
 }
 
 animate();
