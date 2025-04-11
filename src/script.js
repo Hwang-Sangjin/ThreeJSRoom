@@ -140,6 +140,12 @@ transformControls.addEventListener("change", () => {
     if (Math.abs(movingBox.max.x - otherBox.min.x) < snapThreshold) {
       movingObject.position.x = otherBox.min.x - movingSize.x / 2;
     }
+    if (Math.abs(movingBox.min.x - otherBox.min.x) < snapThreshold) {
+      movingObject.position.x = otherBox.min.x + movingSize.x / 2;
+    }
+    if (Math.abs(movingBox.max.x - otherBox.max.x) < snapThreshold) {
+      movingObject.position.x = otherBox.max.x - movingSize.x / 2;
+    }
 
     if (Math.abs(movingBox.min.y - otherBox.max.y) < snapThreshold) {
       movingObject.position.y = otherBox.max.y + movingSize.y / 2;
@@ -147,12 +153,24 @@ transformControls.addEventListener("change", () => {
     if (Math.abs(movingBox.max.y - otherBox.min.y) < snapThreshold) {
       movingObject.position.y = otherBox.min.y - movingSize.y / 2;
     }
+    if (Math.abs(movingBox.min.y - otherBox.min.y) < snapThreshold) {
+      movingObject.position.y = otherBox.min.y + movingSize.y / 2;
+    }
+    if (Math.abs(movingBox.max.y - otherBox.max.y) < snapThreshold) {
+      movingObject.position.y = otherBox.max.y - movingSize.y / 2;
+    }
 
     if (Math.abs(movingBox.min.z - otherBox.max.z) < snapThreshold) {
       movingObject.position.z = otherBox.max.z + movingSize.z / 2;
     }
     if (Math.abs(movingBox.max.z - otherBox.min.z) < snapThreshold) {
       movingObject.position.z = otherBox.min.z - movingSize.z / 2;
+    }
+    if (Math.abs(movingBox.min.z - otherBox.min.z) < snapThreshold) {
+      movingObject.position.z = otherBox.min.z + movingSize.z / 2;
+    }
+    if (Math.abs(movingBox.max.z - otherBox.max.z) < snapThreshold) {
+      movingObject.position.z = otherBox.max.z - movingSize.z / 2;
     }
   });
 
