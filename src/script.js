@@ -4,12 +4,17 @@ import { TransformControls } from "three/examples/jsm/controls/TransformControls
 import sphere from "./components/sphere";
 import { acceleratedRaycast, MeshBVH, MeshBVHHelper } from "three-mesh-bvh";
 import Stats from "stats.js";
-import { DRACOLoader, GLTFLoader } from "three/examples/jsm/Addons.js";
+import {
+  CSS2DRenderer,
+  DRACOLoader,
+  GLTFLoader,
+} from "three/examples/jsm/Addons.js";
 
 let scene, camera, renderer, raycaster, mouse, transformControls;
 let mouseOverObject = null;
 let mouseClickObject = null;
 const object_arr = [];
+const labelRenderer = new CSS2DRenderer();
 
 // Scene setup
 scene = new THREE.Scene();
@@ -34,6 +39,11 @@ camera.position.set(0, 2, 5);
 renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(sizes.width, sizes.height);
 document.body.appendChild(renderer.domElement);
+labelRenderer.domElement.style.cssText = `
+			position: absolute;
+			top: 0px; 
+		`;
+document.body.appendChild(labelRenderer.domElement);
 
 // Orbit Controls
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -128,11 +138,6 @@ transformControls.addEventListener("change", () => {
     const otherSize = new THREE.Vector3();
     otherBox.getSize(otherSize);
 
-    // **Calculate snapping threshold dynamically**
-    const snapThresholdX = (movingSize.x + otherSize.x) / 2;
-    const snapThresholdY = (movingSize.y + otherSize.y) / 2;
-    const snapThresholdZ = (movingSize.z + otherSize.z) / 2;
-
     // **Snap to the closest edge of the other object**
     if (Math.abs(movingBox.min.x - otherBox.max.x) < snapThreshold) {
       movingObject.position.x = otherBox.max.x + movingSize.x / 2;
@@ -190,6 +195,7 @@ function animate() {
   object_arr.forEach((e) => e.children[1].update());
 
   renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
 
   stats.end();
 }
@@ -206,6 +212,8 @@ window.addEventListener("resize", () => {
 
   renderer.setSize(sizes.width, sizes.height);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  labelRenderer.setSize(sizes.width, sizes.height);
 });
 
 window.addEventListener("mousemove", (event) => {
