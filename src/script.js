@@ -14,7 +14,7 @@ let scene, camera, renderer, raycaster, mouse, transformControls;
 let mouseOverObject = null;
 let mouseClickObject = null;
 const object_arr = [];
-const labelRenderer = new CSS2DRenderer();
+let labelRenderer;
 
 // Scene setup
 scene = new THREE.Scene();
@@ -39,10 +39,13 @@ camera.position.set(0, 2, 5);
 renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(sizes.width, sizes.height);
 document.body.appendChild(renderer.domElement);
-labelRenderer.domElement.style.cssText = `
-			position: absolute;
-			top: 0px; 
-		`;
+
+// CSS2DRenderer
+labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(sizes.width, sizes.height);
+labelRenderer.domElement.style.position = "absolute";
+labelRenderer.domElement.style.top = "0px";
+labelRenderer.domElement.style.pointerEvents = "none"; // Prevent labels from blocking mouse events
 document.body.appendChild(labelRenderer.domElement);
 
 // Orbit Controls
@@ -214,6 +217,7 @@ window.addEventListener("resize", () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   labelRenderer.setSize(sizes.width, sizes.height);
+  labelRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
 
 window.addEventListener("mousemove", (event) => {
@@ -259,9 +263,15 @@ window.addEventListener("click", (event) => {
     const boxHelper = group.children[1];
 
     if (mouseClickObject) {
+      const labelObject = mouseClickObject.parent.children[0].children[0];
+      labelObject.visible = false;
+
       mouseClickObject.material.color.set("white"); // Reset previous clicked helper to white
       mouseClickObject.visible = false;
     }
+    const labelComponent = group.children[0].children[0];
+
+    labelComponent.visible = true;
 
     boxHelper.material.color.set("blue"); // Set clicked helper to blue
     boxHelper.visible = true;
@@ -271,6 +281,9 @@ window.addEventListener("click", (event) => {
     transformControls.attach(group.children[0]); // attach the sphere
   } else {
     if (mouseClickObject) {
+      const labelObject = mouseClickObject.parent.children[0].children[0];
+      labelObject.visible = false;
+
       mouseClickObject.material.color.set("white"); // Reset previous clicked helper to white
       mouseClickObject.visible = false;
       mouseClickObject = null;
