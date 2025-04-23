@@ -65,51 +65,41 @@ raycaster = new THREE.Raycaster();
 raycaster.firstHitOnly = true;
 mouse = new THREE.Vector2();
 
-object_arr.push(sphere(scene, [-2, 0, 0]));
-object_arr.push(sphere(scene, [2, 0, 0]));
+// const dracoLoader = new DRACOLoader();
+// dracoLoader.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/"); // or use local path
 
-const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/"); // or use local path
+// const loader = new GLTFLoader();
+// loader.setDRACOLoader(dracoLoader);
+// loader.load(
+//   "rabbit.glb", // Must be in the same server path or in `public/` if using a bundler
+//   (gltf) => {
+//     const model = gltf.scene;
+//     model.scale.set(1, 1, 1);
+//     model.position.set(0, 0, 3);
+//     scene.add(model);
 
-const loader = new GLTFLoader();
-loader.setDRACOLoader(dracoLoader);
-loader.load(
-  "rabbit.glb", // Must be in the same server path or in `public/` if using a bundler
-  (gltf) => {
-    const model = gltf.scene;
-    model.scale.set(1, 1, 1);
-    model.position.set(0, 0, 3);
-    scene.add(model);
+//     const mesh = model.children[0];
+//     mesh.raycast = acceleratedRaycast;
+//     mesh.geometry.boundsTree = new MeshBVH(mesh.geometry);
 
-    const mesh = model.children[0];
-    mesh.raycast = acceleratedRaycast;
-    mesh.geometry.boundsTree = new MeshBVH(mesh.geometry);
+//     // 🔍 Add the BVH visual helper
+//     const helper = new MeshBVHHelper(mesh);
+//     helper.depth = 2;
 
-    // 🔍 Add the BVH visual helper
-    const helper = new MeshBVHHelper(mesh);
-    helper.depth = 2;
-
-    helper.update();
-    helper.visible = true; // set to false if you want to toggle later
-    scene.add(helper);
-  },
-  undefined,
-  (error) => {
-    console.error("An error happened loading the GLB:", error);
-  }
-);
+//     helper.update();
+//     helper.visible = true; // set to false if you want to toggle later
+//     scene.add(helper);
+//   },
+//   undefined,
+//   (error) => {
+//     console.error("An error happened loading the GLB:", error);
+//   }
+// );
 
 object_arr.forEach((group) => {
   const mesh = group.children[0];
   mesh.raycast = acceleratedRaycast;
   mesh.geometry.boundsTree = new MeshBVH(mesh.geometry);
-
-  // 🔍 Add the BVH visual helper
-  const helper = new MeshBVHHelper(mesh);
-  helper.depth = 2;
-  helper.update();
-  helper.visible = true; // set to false if you want to toggle later
-  scene.add(helper);
 });
 
 transformControls = new TransformControls(camera, renderer.domElement);
@@ -117,6 +107,9 @@ transformControls = new TransformControls(camera, renderer.domElement);
 transformControls.addEventListener("dragging-changed", (event) => {
   controls.enabled = !event.value;
 });
+
+object_arr.push(sphere(scene, [-2, 0, 0], transformControls, object_arr));
+object_arr.push(sphere(scene, [2, 0, 0], transformControls, object_arr));
 
 const snapThreshold = 0.2; // Adjust this as needed
 
@@ -217,7 +210,6 @@ window.addEventListener("resize", () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   labelRenderer.setSize(sizes.width, sizes.height);
-  labelRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
 
 window.addEventListener("mousemove", (event) => {
@@ -264,14 +256,14 @@ window.addEventListener("click", (event) => {
 
     if (mouseClickObject) {
       const labelObject = mouseClickObject.parent.children[0].children[0];
-      labelObject.visible = false;
+      if (labelObject) labelObject.visible = false;
 
       mouseClickObject.material.color.set("white"); // Reset previous clicked helper to white
       mouseClickObject.visible = false;
     }
     const labelComponent = group.children[0].children[0];
 
-    labelComponent.visible = true;
+    if (labelComponent) labelComponent.visible = true;
 
     boxHelper.material.color.set("blue"); // Set clicked helper to blue
     boxHelper.visible = true;
@@ -282,7 +274,7 @@ window.addEventListener("click", (event) => {
   } else {
     if (mouseClickObject) {
       const labelObject = mouseClickObject.parent.children[0].children[0];
-      labelObject.visible = false;
+      if (labelObject) labelObject.visible = false;
 
       mouseClickObject.material.color.set("white"); // Reset previous clicked helper to white
       mouseClickObject.visible = false;
