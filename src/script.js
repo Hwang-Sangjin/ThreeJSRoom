@@ -15,10 +15,13 @@ let mouseOverObject = null;
 let mouseClickObject = null;
 const object_arr = [];
 let labelRenderer;
+let isDragging = false;
+let isMouseDown = false;
+let isObjectMoving = false;
 
 // Scene setup
 scene = new THREE.Scene();
-scene.background = new THREE.Color(0x202020);
+scene.background = new THREE.Color(0xf5f5dc);
 const stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
 document.body.appendChild(stats.dom);
@@ -65,6 +68,18 @@ raycaster = new THREE.Raycaster();
 raycaster.firstHitOnly = true;
 mouse = new THREE.Vector2();
 
+// Plane
+const planeGeometry = new THREE.PlaneGeometry(30, 30, 10, 10);
+const planeMaterial = new THREE.MeshBasicMaterial({
+  color: 0x505050,
+  side: THREE.DoubleSide,
+});
+const planeMesh = new THREE.Mesh(planeGeometry, planeMaterial);
+planeMesh.position.y = -1;
+planeMesh.rotation.x = Math.PI / 2;
+
+scene.add(planeMesh);
+
 // const dracoLoader = new DRACOLoader();
 // dracoLoader.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/"); // or use local path
 
@@ -103,6 +118,7 @@ object_arr.forEach((group) => {
 });
 
 transformControls = new TransformControls(camera, renderer.domElement);
+console.log(transformControls);
 // Prevent OrbitControls while dragging
 transformControls.addEventListener("dragging-changed", (event) => {
   controls.enabled = !event.value;
@@ -188,6 +204,8 @@ function animate() {
 
   requestAnimationFrame(animate);
 
+  // controls.enabled = mouseClickObject === null ? true : false;
+
   object_arr.forEach((e) => e.children[1].update());
 
   renderer.render(scene, camera);
@@ -195,6 +213,27 @@ function animate() {
 
   stats.end();
 }
+
+const onMouseDown = (event) => {
+  isMouseDown = true;
+  mouse.x = (event.clientX / sizes.width) * 2 - 1;
+  mouse.y = -(event.clientY / sizes.height) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  let intersects = raycaster.intersectObjects(object_arr);
+  intersects = intersects.filter((e) => e.object.type !== "BoxHelper");
+
+  if (intersects.length > 0) {
+    controls.enabled = false; // Disable OrbitControls when clicking an object
+    isObjectMoving = true;
+  }
+};
+
+const onMouseUp = () => {
+  isMouseDown = false;
+  controls.enabled = true; // Re-enable OrbitControls
+  isObjectMoving = false;
+};
 
 animate();
 
@@ -216,29 +255,66 @@ window.addEventListener("mousemove", (event) => {
   mouse.x = (event.clientX / sizes.width) * 2 - 1;
   mouse.y = -(event.clientY / sizes.height) * 2 + 1;
 
-  raycaster.setFromCamera(mouse, camera);
-  let intersects = raycaster.intersectObjects(object_arr);
-  intersects = intersects.filter((e) => e.object.type !== "BoxHelper");
+  if (isMouseDown) {
+    isDragging = true;
+  }
 
-  if (intersects.length > 0) {
-    const group = intersects[0].object.parent;
-    const boxHelper = group.children[1];
+  if (isDragging) {
+    raycaster.setFromCamera(mouse, camera);
+    let intersects = raycaster.intersectObjects([planeMesh]);
 
-    if (mouseOverObject && mouseOverObject !== mouseClickObject) {
-      mouseOverObject.visible = false; // Hide previous hover helper unless clicked
+    if (intersects.length > 0 && isObjectMoving) {
+      const group = mouseClickObject.parent;
+      const object = group.children[0]; // The 3D object (e.g., sphere)
+
+      // Calculate the bounding box of the object
+      const boundingBox = new THREE.Box3().setFromObject(object);
+      const size = new THREE.Vector3();
+      boundingBox.getSize(size); // Get the object's dimensions
+      const center = new THREE.Vector3();
+      boundingBox.getCenter(center); // Get the center of the bounding box
+
+      // Calculate the offset from the object's center to its bottom
+      const bottomOffset = center.y - boundingBox.min.y; // Distance from center to bottom
+
+      // Get the raycast intersection point
+      const intersectPoint = intersects[0].point;
+
+      // Set the object's position, adjusting y to place the bottom on the plane
+      object.position.set(
+        intersectPoint.x,
+        intersectPoint.y + bottomOffset, // Offset so bottom is on plane (y = -1)
+        intersectPoint.z
+      );
+
+      // Update BoxHelper
+      group.children[1].setFromObject(object);
     }
-
-    if (boxHelper !== mouseClickObject) {
-      boxHelper.visible = true; // Show white highlight on hover
-      boxHelper.material.color.set("white");
-    }
-
-    mouseOverObject = boxHelper;
   } else {
-    if (mouseOverObject && mouseOverObject !== mouseClickObject) {
-      mouseOverObject.visible = false;
+    raycaster.setFromCamera(mouse, camera);
+    let intersects = raycaster.intersectObjects(object_arr);
+    intersects = intersects.filter((e) => e.object.type !== "BoxHelper");
+
+    if (intersects.length > 0) {
+      const group = intersects[0].object.parent;
+      const boxHelper = group.children[1];
+
+      if (mouseOverObject && mouseOverObject !== mouseClickObject) {
+        mouseOverObject.visible = false; // Hide previous hover helper
+      }
+
+      if (boxHelper !== mouseClickObject) {
+        boxHelper.visible = true; // Show hover highlight
+        boxHelper.material.color.set("white");
+      }
+
+      mouseOverObject = boxHelper;
+    } else {
+      if (mouseOverObject && mouseOverObject !== mouseClickObject) {
+        mouseOverObject.visible = false;
+      }
+      mouseOverObject = null;
     }
-    mouseOverObject = null;
   }
 });
 
@@ -251,37 +327,52 @@ window.addEventListener("click", (event) => {
   intersects = intersects.filter((e) => e.object.type !== "BoxHelper");
 
   if (intersects.length > 0) {
-    const group = intersects[0].object.parent;
-    const boxHelper = group.children[1];
+    if (isDragging) {
+    } else {
+      // Clicked on an object
+      const group = intersects[0].object.parent;
+      const boxHelper = group.children[1];
 
-    if (mouseClickObject) {
-      const labelObject = mouseClickObject.parent.children[0].children[0];
-      if (labelObject) labelObject.visible = false;
+      // Reset previous selection
+      if (mouseClickObject) {
+        const prevLabel = mouseClickObject.parent.children[0].children[0];
+        if (prevLabel) prevLabel.visible = false;
+        mouseClickObject.material.color.set("white");
+        mouseClickObject.visible = false;
+      }
 
-      mouseClickObject.material.color.set("white"); // Reset previous clicked helper to white
-      mouseClickObject.visible = false;
+      // Set new selection
+      const labelComponent = group.children[0].children[0];
+      if (labelComponent) labelComponent.visible = true;
+
+      boxHelper.material.color.set("blue");
+      boxHelper.visible = true;
+      mouseClickObject = boxHelper;
+
+      // Attach TransformControls to the sphere
+      transformControls.attach(group.children[0]);
     }
-    const labelComponent = group.children[0].children[0];
-
-    if (labelComponent) labelComponent.visible = true;
-
-    boxHelper.material.color.set("blue"); // Set clicked helper to blue
-    boxHelper.visible = true;
-    mouseClickObject = boxHelper;
-
-    // ✅ Attach transform controls to this sphere
-    transformControls.attach(group.children[0]); // attach the sphere
   } else {
+    // Clicked on empty space
     if (mouseClickObject) {
-      const labelObject = mouseClickObject.parent.children[0].children[0];
-      if (labelObject) labelObject.visible = false;
+      if (isDragging) {
+      } else {
+        const labelObject = mouseClickObject.parent.children[0].children[0];
+        if (labelObject) labelObject.visible = false;
 
-      mouseClickObject.material.color.set("white"); // Reset previous clicked helper to white
-      mouseClickObject.visible = false;
-      mouseClickObject = null;
+        mouseClickObject.material.color.set("white");
+        mouseClickObject.visible = false;
+        mouseClickObject = null;
+        transformControls.detach();
+      }
     }
 
-    // If clicking empty space, detach controls
-    transformControls.detach();
+    // Detach TransformControls
   }
+
+  // Reset dragging state
+  isDragging = false;
 });
+
+window.addEventListener("mousedown", onMouseDown);
+window.addEventListener("mouseup", onMouseUp);
